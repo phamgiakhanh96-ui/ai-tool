@@ -1,8 +1,19 @@
 import { Injectable } from '@angular/core';
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
+import type { SubtitleCue } from './subtitle-transcription.service';
 
 const CORE_BASE_URL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
+
+interface SubtitleFrame {
+  name: string;
+  image: Blob;
+}
+
+interface SubtitleTimeline {
+  frames: SubtitleFrame[];
+  manifest: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class FfmpegVideoService {
@@ -12,7 +23,8 @@ export class FfmpegVideoService {
     images: File[],
     audio: Blob,
     audioFileName: string,
-    onStatus: (status: string) => void
+    onStatus: (status: string) => void,
+    subtitleCues: SubtitleCue[] | null = null
   ): Promise<Blob> {
     if (images.length === 0) {
       throw new Error('Chọn ít nhất một ảnh để tạo video.');
@@ -22,6 +34,9 @@ export class FfmpegVideoService {
     const audioInputName = getAudioInputName(audioFileName);
     const audioDuration = await getAudioDuration(audio);
     const imageDuration = audioDuration / images.length;
+    const subtitleTimeline = subtitleCues?.length
+      ? await createSubtitleTimeline(subtitleCues, audioDuration, onStatus)
+      : null;
     const ffmpeg = await this.load(onStatus);
 
     const filesToDelete: string[] = [];
@@ -33,6 +48,18 @@ export class FfmpegVideoService {
       await ffmpeg.writeFile(audioInputName, await fetchFile(audio));
       filesToDelete.push(audioInputName);
 
+      if (subtitleTimeline) {
+        for (const frame of subtitleTimeline.frames) {
+          await ffmpeg.writeFile(frame.name, await fetchFile(frame.image));
+          filesToDelete.push(frame.name);
+        }
+        await ffmpeg.writeFile(
+          'subtitle-timeline.ffconcat',
+          new TextEncoder().encode(subtitleTimeline.manifest)
+        );
+        filesToDelete.push('subtitle-timeline.ffconcat');
+      }
+
       onStatus('Đang tạo slideshow và mã hóa MP4...');
       const filters = images.map((_, index) =>
         `[${index}:v:0]scale=1280:720:force_original_aspect_ratio=increase,` +
@@ -42,6 +69,7 @@ export class FfmpegVideoService {
       );
       filters.push(`${images.map((_, index) => `[v${index}]`).join('')}concat=n=${images.length}:v=1:a=0[outv]`);
 
+      let videoOutput = 'outv';
       const args = ['-y', ...inputNames.flatMap((name) => [
         '-loop', '1',
         '-framerate', '30',
@@ -50,8 +78,17 @@ export class FfmpegVideoService {
       ])];
       args.push(
         '-i', audioInputName,
+      );
+      if (subtitleTimeline) {
+        const subtitleStreamIndex = images.length + 1;
+        args.push('-f', 'concat', '-safe', '0', '-i', 'subtitle-timeline.ffconcat');
+        filters.push(`[${subtitleStreamIndex}:v:0]fps=30,setpts=PTS-STARTPTS[subtitles]`);
+        filters.push('[outv][subtitles]overlay=eof_action=pass:shortest=0:format=auto[outvsub]');
+        videoOutput = 'outvsub';
+      }
+      args.push(
         '-filter_complex', filters.join(';'),
-        '-map', '[outv]',
+        '-map', `[${videoOutput}]`,
         '-map', `${images.length}:a:0`,
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
@@ -121,6 +158,130 @@ function getInputName(file: File, index: number): string {
     throw new Error('Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.');
   }
   return `story-image-${index}.${extension}`;
+}
+
+async function createSubtitleTimeline(
+  cues: SubtitleCue[],
+  audioDuration: number,
+  onStatus: (status: string) => void
+): Promise<SubtitleTimeline> {
+  onStatus('Đang căn thời gian phụ đề...');
+  const validCues = cues
+    .map(({ start, end, text }) => ({
+      start: Math.max(0, start),
+      end: Math.min(audioDuration, end),
+      text: text.trim(),
+    }))
+    .filter(({ start, end, text }) =>
+      Number.isFinite(start) && Number.isFinite(end) && end > start && text.length > 0
+    );
+  if (validCues.length === 0) {
+    throw new Error('Không có phụ đề hợp lệ để ghép vào video.');
+  }
+
+  const boundaries = [...new Set([0, audioDuration, ...validCues.flatMap(({ start, end }) => [start, end])])]
+    .sort((left, right) => left - right);
+  const frames: SubtitleFrame[] = [];
+  const frameNames = new Map<string, string>();
+  const manifestLines = ['ffconcat version 1.0'];
+  let lastFrameName = '';
+
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const start = boundaries[index];
+    const end = boundaries[index + 1];
+    const duration = Number((end - start).toFixed(3));
+    if (duration <= 0) {
+      continue;
+    }
+
+    const text = validCues
+      .filter((cue) => cue.start <= start && cue.end > start)
+      .map((cue) => cue.text)
+      .join('\n');
+    let frameName = frameNames.get(text);
+    if (!frameName) {
+      frameName = `subtitle-state-${frames.length}.png`;
+      frames.push({ name: frameName, image: await renderSubtitleImage(text) });
+      frameNames.set(text, frameName);
+    }
+    manifestLines.push(`file '${frameName}'`, `duration ${duration.toFixed(3)}`);
+    lastFrameName = frameName;
+  }
+
+  if (!lastFrameName) {
+    throw new Error('Không tạo được timeline phụ đề.');
+  }
+  manifestLines.push(`file '${lastFrameName}'`);
+  return { frames, manifest: `${manifestLines.join('\n')}\n` };
+}
+
+async function renderSubtitleImage(text: string): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1280;
+  canvas.height = 720;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Không thể tạo hình phụ đề trong trình duyệt.');
+  }
+  if (text) {
+    let fontSize = 40;
+    context.font = `bold ${fontSize}px Arial, sans-serif`;
+    let lines = wrapSubtitleText(context, text, 1120);
+    if (lines.length > 4) {
+      fontSize = 32;
+      context.font = `bold ${fontSize}px Arial, sans-serif`;
+      lines = wrapSubtitleText(context, text, 1120);
+    }
+    if (lines.length > 6) {
+      throw new Error('Một dòng phụ đề quá dài để hiển thị rõ trên video.');
+    }
+
+    const lineHeight = fontSize * 1.25;
+    const boxHeight = lines.length * lineHeight + 32;
+    const boxTop = canvas.height - boxHeight - 28;
+    context.fillStyle = 'rgba(0, 0, 0, 0.72)';
+    context.fillRect(40, boxTop, canvas.width - 80, boxHeight);
+    context.font = `bold ${fontSize}px Arial, sans-serif`;
+    context.fillStyle = '#ffffff';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    lines.forEach((line, index) => {
+      context.fillText(line, canvas.width / 2, boxTop + 16 + (index + 0.5) * lineHeight, 1120);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((image) => {
+      if (image) {
+        resolve(image);
+      } else {
+        reject(new Error('Không thể mã hóa hình phụ đề.'));
+      }
+    }, 'image/png');
+  });
+}
+
+function wrapSubtitleText(context: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split('\n')) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push('');
+      continue;
+    }
+    let line = words[0];
+    for (const word of words.slice(1)) {
+      const candidate = `${line} ${word}`;
+      if (context.measureText(candidate).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    lines.push(line);
+  }
+  return lines;
 }
 
 async function getWavDuration(audio: Blob): Promise<number> {

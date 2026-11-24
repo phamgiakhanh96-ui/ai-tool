@@ -1,119 +1,299 @@
 <main>
   <section class="voice-tool">
-    <header>
+    <header class="page-header">
       <p class="eyebrow">VieNeu-TTS v3 Turbo</p>
-      <h1>Tạo giọng nói tiếng Việt</h1>
-      <p class="description">Nhập văn bản, chọn giọng có sẵn và tạo audio WAV.</p>
+      <h1>Tạo video kể chuyện</h1>
+      <p class="description">Hoàn thành lần lượt 3 bước: chuẩn bị audio, chọn ảnh và phụ đề, rồi tạo video MP4.</p>
     </header>
 
     @if (error()) {
       <p class="error" role="alert">{{ error() }}</p>
     }
 
-    <form (ngSubmit)="generateSpeech()">
-      <label for="speech-text">Văn bản</label>
-      <textarea
-        id="speech-text"
-        name="text"
-        rows="7"
-        maxlength="20000"
-        required
-        [(ngModel)]="text"
-        placeholder="Nhập nội dung tiếng Việt..."
-      ></textarea>
-      <div class="character-count">{{ text.length }} / 20.000 ký tự</div>
-
-      <label for="voice">Giọng đọc</label>
-      <select
-        id="voice"
-        name="voice"
-        required
-        [disabled]="loadingVoices() || voices().length === 0"
-        [ngModel]="selectedVoice()"
-        (ngModelChange)="selectedVoice.set($event)"
-      >
-        @if (loadingVoices()) {
-          <option value="">Đang tải danh sách giọng...</option>
-        } @else if (voices().length === 0) {
-          <option value="">Không có giọng đọc</option>
-        } @else {
-          @for (voice of voices(); track voice.id) {
-            <option [value]="voice.id">{{ voice.name }}{{ voice.gender ? ' - ' + voice.gender : '' }}</option>
-          }
-        }
-      </select>
-
-      @if (selectedVoice()) {
-        <p class="voice-description">{{ selectedVoiceDescription }}</p>
-      }
-
-      <button type="submit" [disabled]="generating() || loadingVoices() || !text.trim() || !selectedVoice()">
-        {{ generating() ? 'Đang tạo audio...' : 'Tạo giọng nói' }}
-      </button>
-    </form>
-
-    @if (audioUrl()) {
-      <section class="result" aria-label="Audio đã tạo">
-        <h2>Audio của bạn</h2>
-        <audio [src]="audioUrl()" controls></audio>
-        <a [href]="audioUrl()" [download]="audioFileName()">Tải audio</a>
-      </section>
-    }
-
-    <section class="video-editor">
-      <h2>Tạo video kể chuyện từ ảnh</h2>
-      <p class="description">Dùng audio VieNeu vừa tạo hoặc tải audio có sẵn, rồi chọn ảnh theo thứ tự câu chuyện.</p>
-      <label for="narration-audio">Audio kể chuyện (WAV, MP3, M4A, AAC, OGG hoặc FLAC)</label>
-      <input
-        id="narration-audio"
-        type="file"
-        accept=".wav,.mp3,.m4a,.aac,.ogg,.flac,audio/*"
-        [disabled]="generating()"
-        (change)="onNarrationSelected($event)"
-      />
-      @if (audioFileName()) {
-        <p class="render-status">Audio đang dùng: {{ audioFileName() }}</p>
-      }
-
-      <label for="story-images">Ảnh minh họa (JPG, PNG hoặc WebP)</label>
-      <input
-        id="story-images"
-        type="file"
-        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-        multiple
-        (change)="onStoryImagesSelected($event)"
-      />
-
-      @if (storyImages().length > 0) {
-        <ul class="clip-list">
-          @for (file of storyImages(); track file.name + file.size) {
-            <li>{{ file.name }} ({{ (file.size / 1048576).toFixed(1) }} MB)</li>
-          }
-        </ul>
-      }
-
-      <p class="render-note">Ảnh được chia đều theo thời lượng audio và có hiệu ứng zoom nhẹ. Khoảng 15 ảnh phù hợp cho audio 2 phút. FFmpeg chạy trong trình duyệt nên file lớn có thể tốn nhiều bộ nhớ.</p>
-      @if (renderError()) {
-        <p class="error" role="alert">{{ renderError() }}</p>
-      }
-      @if (renderStatus()) {
-        <p class="render-status" role="status">{{ renderStatus() }}</p>
-      }
-      <button
-        type="button"
-        [disabled]="rendering() || !audioUrl() || storyImages().length === 0"
-        (click)="renderMovie()"
-      >
-        {{ rendering() ? 'Đang tạo video...' : 'Tạo video kể chuyện' }}
-      </button>
-
-      @if (movieUrl()) {
-        <section class="result" aria-label="Video đã ghép">
-          <h2>Phim hoạt hình</h2>
-          <video [src]="movieUrl()" controls></video>
-          <a [href]="movieUrl()" download="vieneu-animation.mp4">Tải file MP4</a>
-        </section>
-      }
+    <section class="workflow-progress" aria-label="Tiến độ làm phim">
+      <p>Đang thực hiện: <strong>Bước {{ activeStep() }} / 3</strong></p>
+      <ol class="progress-track">
+        <li
+          [class.is-current]="activeStep() === 1"
+          [class.is-complete]="!!audioUrl()"
+          [attr.aria-current]="activeStep() === 1 ? 'step' : null"
+        >
+          <span>{{ audioUrl() ? '✓' : '1' }}</span>
+          <small>Audio & giọng đọc</small>
+        </li>
+        <li
+          [class.is-current]="activeStep() === 2"
+          [class.is-complete]="storyImages().length > 0"
+          [attr.aria-current]="activeStep() === 2 ? 'step' : null"
+        >
+          <span>{{ storyImages().length > 0 ? '✓' : '2' }}</span>
+          <small>Ảnh & phụ đề</small>
+        </li>
+        <li
+          [class.is-current]="activeStep() === 3"
+          [class.is-complete]="!!movieUrl()"
+          [attr.aria-current]="activeStep() === 3 ? 'step' : null"
+        >
+          <span>{{ movieUrl() ? '✓' : '3' }}</span>
+          <small>Tạo video</small>
+        </li>
+      </ol>
     </section>
+
+    <div class="workflow">
+      <section
+        class="workflow-step"
+        [class.is-open]="activeStep() === 1"
+        [class.is-complete]="!!audioUrl()"
+        [class.is-current]="activeStep() === 1"
+      >
+        <button
+          class="step-toggle"
+          type="button"
+          [attr.aria-expanded]="activeStep() === 1"
+          (click)="toggleStep(1)"
+        >
+          <span class="step-number">1</span>
+          <span class="step-heading">
+            <strong>Audio & giọng đọc</strong>
+            <small>{{ audioFileName() || 'Tạo giọng VieNeu hoặc tải audio có sẵn' }}</small>
+          </span>
+          <span class="step-chevron" aria-hidden="true">{{ activeStep() === 1 ? '−' : '+' }}</span>
+        </button>
+
+        @if (activeStep() === 1) {
+          <div class="step-content">
+            <div class="mode-switch" aria-label="Cách chuẩn bị audio">
+              <button
+                id="audio-mode-tts"
+                class="mode-button"
+                [class.is-selected]="audioInputMode() === 'tts'"
+                type="button"
+                (click)="setAudioInputMode('tts')"
+              >
+                Tạo audio từ văn bản
+              </button>
+              <button
+                id="audio-mode-upload"
+                class="mode-button"
+                [class.is-selected]="audioInputMode() === 'upload'"
+                type="button"
+                (click)="setAudioInputMode('upload')"
+              >
+                Tải audio lên
+              </button>
+            </div>
+
+            @if (audioInputMode() === 'tts') {
+              <form class="speech-form" (ngSubmit)="generateSpeech()">
+                <label for="speech-text">Văn bản kể chuyện</label>
+                <textarea
+                  id="speech-text"
+                  name="text"
+                  rows="7"
+                  maxlength="20000"
+                  required
+                  [(ngModel)]="text"
+                  placeholder="Nhập nội dung tiếng Việt..."
+                ></textarea>
+                <div class="character-count">{{ text.length }} / 20.000 ký tự</div>
+
+                <label for="voice">Chọn giọng đọc VieNeu</label>
+                <select
+                  id="voice"
+                  name="voice"
+                  required
+                  [disabled]="loadingVoices() || voices().length === 0"
+                  [ngModel]="selectedVoice()"
+                  (ngModelChange)="selectedVoice.set($event)"
+                >
+                  @if (loadingVoices()) {
+                    <option value="">Đang tải danh sách giọng...</option>
+                  } @else if (voices().length === 0) {
+                    <option value="">Không có giọng đọc</option>
+                  } @else {
+                    @for (voice of voices(); track voice.id) {
+                      <option [value]="voice.id">{{ voice.name }}{{ voice.gender ? ' - ' + voice.gender : '' }}</option>
+                    }
+                  }
+                </select>
+
+                @if (selectedVoice()) {
+                  <p class="voice-description">{{ selectedVoiceDescription }}</p>
+                }
+
+                <button
+                  id="generate-audio"
+                  class="primary-button"
+                  type="submit"
+                  [disabled]="generating() || loadingVoices() || !text.trim() || !selectedVoice()"
+                >
+                  {{ generating() ? 'Đang tạo audio...' : 'Tạo audio VieNeu' }}
+                </button>
+              </form>
+            } @else {
+              <div class="upload-panel">
+                <label for="narration-audio">Chọn audio kể chuyện</label>
+                <input
+                  id="narration-audio"
+                  type="file"
+                  accept=".wav,.mp3,.m4a,.aac,.ogg,.flac,audio/*"
+                  (change)="onNarrationSelected($event)"
+                />
+                <p class="field-hint">Hỗ trợ WAV, MP3, M4A, AAC, OGG hoặc FLAC.</p>
+              </div>
+            }
+
+            @if (audioUrl()) {
+              <div class="audio-preview">
+                <h3>Nghe thử audio</h3>
+                <audio [src]="audioUrl()" controls></audio>
+                <a [href]="audioUrl()" [download]="audioFileName()">Tải audio</a>
+              </div>
+            }
+
+            <div class="step-actions">
+              <button
+                class="primary-button"
+                type="button"
+                [disabled]="!audioUrl()"
+                (click)="activeStep.set(2)"
+              >
+                Tiếp tục: chọn ảnh
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+
+      <section
+        class="workflow-step"
+        [class.is-open]="activeStep() === 2"
+        [class.is-complete]="storyImages().length > 0"
+        [class.is-current]="activeStep() === 2"
+      >
+        <button
+          class="step-toggle"
+          type="button"
+          [disabled]="!audioUrl()"
+          [attr.aria-expanded]="activeStep() === 2"
+          (click)="toggleStep(2)"
+        >
+          <span class="step-number">2</span>
+          <span class="step-heading">
+            <strong>Ảnh & phụ đề</strong>
+            <small>{{ storyImages().length ? storyImages().length + ' ảnh đã chọn' : 'Sắp xếp ảnh và chọn phụ đề tự động' }}</small>
+          </span>
+          <span class="step-chevron" aria-hidden="true">{{ activeStep() === 2 ? '−' : '+' }}</span>
+        </button>
+
+        @if (activeStep() === 2) {
+          <div class="step-content">
+            <label for="story-images">Chọn ảnh theo thứ tự câu chuyện</label>
+            <input
+              id="story-images"
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              multiple
+              (change)="onStoryImagesSelected($event)"
+            />
+            <p class="field-hint">Hỗ trợ JPG, PNG hoặc WebP. Có thể chọn nhiều ảnh cùng lúc.</p>
+
+            @if (storyImages().length > 0) {
+              <ul class="clip-list">
+                @for (file of storyImages(); track file.name + file.size) {
+                  <li>{{ file.name }} <span>{{ (file.size / 1048576).toFixed(1) }} MB</span></li>
+                }
+              </ul>
+            }
+
+            <label class="subtitle-option" for="include-subtitles">
+              <input
+                id="include-subtitles"
+                type="checkbox"
+                [checked]="includeSubtitles()"
+                (change)="onSubtitleToggle($event)"
+              />
+              Tự động tạo phụ đề tiếng Việt
+            </label>
+            @if (includeSubtitles()) {
+              <p class="field-hint subtitle-hint">
+                Whisper nhận dạng audio ngay trong trình duyệt; lần đầu cần tải model vài trăm MB.
+                Audio không được tải lên máy chủ.
+              </p>
+            }
+
+            <div class="step-actions">
+              <button
+                id="continue-to-video"
+                class="primary-button"
+                type="button"
+                [disabled]="storyImages().length === 0"
+                (click)="continueToVideo()"
+              >
+                Tiếp tục: xem và tạo video
+              </button>
+            </div>
+          </div>
+        }
+      </section>
+
+      <section
+        class="workflow-step"
+        [class.is-open]="activeStep() === 3"
+        [class.is-complete]="!!movieUrl()"
+        [class.is-current]="activeStep() === 3"
+      >
+        <button
+          class="step-toggle"
+          type="button"
+          [disabled]="!audioUrl() || storyImages().length === 0"
+          [attr.aria-expanded]="activeStep() === 3"
+          (click)="toggleStep(3)"
+        >
+          <span class="step-number">3</span>
+          <span class="step-heading">
+            <strong>Tạo video</strong>
+            <small>Kiểm tra nội dung rồi xuất MP4</small>
+          </span>
+          <span class="step-chevron" aria-hidden="true">{{ activeStep() === 3 ? '−' : '+' }}</span>
+        </button>
+
+        @if (activeStep() === 3) {
+          <div class="step-content">
+            <div class="video-summary">
+              <div><span>Audio</span><strong>{{ audioFileName() }}</strong></div>
+              <div><span>Ảnh minh họa</span><strong>{{ storyImages().length }} ảnh</strong></div>
+              <div><span>Phụ đề</span><strong>{{ includeSubtitles() ? 'Whisper tiếng Việt' : 'Không' }}</strong></div>
+            </div>
+
+            <p class="render-note">Video xuất 720p, H.264/AAC. FFmpeg chạy trong trình duyệt nên thời gian xử lý tùy theo độ dài audio và số lượng ảnh.</p>
+            @if (renderError()) {
+              <p class="error" role="alert">{{ renderError() }}</p>
+            }
+            @if (renderStatus()) {
+              <p class="render-status" role="status">{{ renderStatus() }}</p>
+            }
+            <button
+              id="render-video"
+              class="primary-button generate-video"
+              type="button"
+              [disabled]="rendering()"
+              (click)="renderMovie()"
+            >
+              {{ rendering() ? 'Đang tạo video...' : 'Tạo video kể chuyện' }}
+            </button>
+
+            @if (movieUrl()) {
+              <section class="video-result" aria-label="Video đã ghép">
+                <h3>Video hoàn tất</h3>
+                <video [src]="movieUrl()" controls></video>
+                <a [href]="movieUrl()" download="vieneu-animation.mp4">Tải file MP4</a>
+              </section>
+            }
+          </div>
+        }
+      </section>
+    </div>
   </section>
 </main>

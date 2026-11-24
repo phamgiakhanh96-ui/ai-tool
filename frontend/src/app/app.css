@@ -6,20 +6,25 @@
 }
 
 main {
-  display: grid;
+  display: flex;
   min-height: 100vh;
-  place-items: center;
-  padding: 24px;
+  justify-content: center;
+  padding: 40px 20px;
   background: #f3f6fb;
 }
 
 .voice-tool {
-  width: min(100%, 720px);
-  padding: 40px;
+  width: min(100%, 900px);
+  height: fit-content;
+  padding: clamp(20px, 4vw, 36px);
   border: 1px solid #dfe6f0;
-  border-radius: 16px;
+  border-radius: 18px;
   background: #fff;
   box-shadow: 0 16px 48px rgb(23 32 51 / 8%);
+}
+
+.page-header {
+  margin-bottom: 28px;
 }
 
 .eyebrow {
@@ -37,17 +42,174 @@ h1 {
 }
 
 .description {
-  margin: 12px 0 28px;
+  margin: 10px 0 0;
   color: #596579;
 }
 
-form {
+.workflow-progress {
   display: grid;
   gap: 12px;
+  margin: 22px 0 28px;
+}
+
+.workflow-progress > p {
+  margin: 0;
+  color: #596579;
+}
+
+.progress-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.progress-track li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid #dfe6f0;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.progress-track li.is-current {
+  border-color: #3759c7;
+  background: #f1f5ff;
+  color: #2f4fb8;
+}
+
+.progress-track li.is-complete > span {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.progress-track li > span {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8edfb;
+  color: #3759c7;
+  font-weight: 700;
+}
+
+.progress-track small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflow {
+  display: grid;
+  gap: 14px;
+}
+
+.workflow-step {
+  overflow: hidden;
+  border: 1px solid #dfe6f0;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.workflow-step.is-open {
+  border-color: #9aafea;
+  box-shadow: 0 6px 20px rgb(55 89 199 / 7%);
+}
+
+.workflow-step.is-current {
+  border-color: #3759c7;
+}
+
+.workflow-step.is-complete .step-number {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.step-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 78px;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: 16px 20px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.step-toggle:hover:not(:disabled) {
+  background: #f8faff;
+}
+
+.step-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.step-number {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8edfb;
+  color: #3759c7;
+  font-weight: 700;
+}
+
+.is-open .step-number {
+  background: #3759c7;
+  color: #fff;
+}
+
+.step-heading {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.step-heading strong {
+  font-size: 1rem;
+}
+
+.step-heading small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-chevron {
+  margin-left: auto;
+  color: #3759c7;
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+
+.step-content {
+  display: grid;
+  gap: 14px;
+  padding: 4px 22px 22px;
+  border-top: 1px solid #edf1f7;
 }
 
 label {
-  margin-top: 8px;
+  margin-top: 4px;
   font-weight: 700;
 }
 
@@ -66,6 +228,11 @@ textarea {
   line-height: 1.55;
 }
 
+.speech-form {
+  display: grid;
+  gap: 12px;
+}
+
 .character-count {
   margin-top: -6px;
   color: #64748b;
@@ -73,16 +240,136 @@ textarea {
   text-align: right;
 }
 
-.voice-description {
-  min-height: 1.4em;
+.voice-description,
+.field-hint {
   margin: 0;
   color: #596579;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 5px;
+  border-radius: 10px;
+  background: #f1f5f9;
+}
+
+.mode-button {
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.mode-button.is-selected {
+  border-color: #dce5fb;
+  background: #fff;
+  color: #2f4fb8;
+  box-shadow: 0 1px 3px rgb(23 32 51 / 8%);
+}
+
+.upload-panel {
+  display: grid;
+  gap: 10px;
+}
+
+input[type='file'] {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.audio-preview,
+.video-result {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.audio-preview h3,
+.video-result h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.audio-preview audio,
+.video-result video {
+  width: 100%;
+}
+
+.audio-preview a,
+.video-result a {
+  color: #3759c7;
+  font-weight: 700;
+}
+
+.subtitle-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.subtitle-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #3759c7;
+}
+
+.subtitle-hint {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f1f5ff;
+}
+
+.clip-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clip-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #334155;
   font-size: 0.9rem;
 }
 
-button {
-  margin-top: 12px;
-  padding: 13px 18px;
+.clip-list span {
+  flex: 0 0 auto;
+  color: #64748b;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.primary-button {
+  margin: 0;
+  padding: 12px 18px;
   border: 0;
   border-radius: 8px;
   background: #3759c7;
@@ -92,9 +379,57 @@ button {
   font-weight: 700;
 }
 
-button:disabled {
+.primary-button:hover:not(:disabled) {
+  background: #2f4fb8;
+}
+
+.primary-button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
+}
+
+.generate-video {
+  width: 100%;
+  min-height: 48px;
+  font-size: 1rem;
+}
+
+.video-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.video-summary div {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.video-summary span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.video-summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.render-note,
+.render-status {
+  margin: 0;
+  color: #596579;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.render-status {
+  color: #2f4fb8;
 }
 
 .error {
@@ -105,67 +440,58 @@ button:disabled {
   color: #991b1b;
 }
 
-.result {
-  display: grid;
-  gap: 14px;
-  margin-top: 28px;
-  padding-top: 24px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.result h2 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.result audio {
-  width: 100%;
-}
-
-.result a {
-  color: #3759c7;
-  font-weight: 700;
-}
-
-.video-editor {
-  display: grid;
-  gap: 14px;
-  margin-top: 32px;
-  padding-top: 28px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.video-editor h2 {
-  margin: 0;
-  font-size: 1.25rem;
-}
-
-.video-editor input[type='file'] {
-  width: 100%;
-  padding: 12px;
-  border: 1px dashed #94a3b8;
-  border-radius: 8px;
-  background: #f8fafc;
-}
-
-.clip-list {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding-left: 20px;
-  color: #475569;
-  font-size: 0.9rem;
-}
-
-.render-note,
-.render-status {
-  margin: 0;
-  color: #596579;
-  font-size: 0.9rem;
-}
-
-.video-editor video {
-  width: 100%;
+.video-result video {
   border-radius: 8px;
   background: #0f172a;
+}
+
+@media (max-width: 600px) {
+  main {
+    padding: 16px 10px;
+  }
+
+  .voice-tool {
+    padding: 18px 14px;
+    border-radius: 14px;
+  }
+
+  .step-toggle {
+    min-height: 70px;
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .step-content {
+    padding: 4px 14px 16px;
+  }
+
+  .progress-track {
+    gap: 6px;
+  }
+
+  .progress-track li {
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+
+  .progress-track small {
+    font-size: 0.68rem;
+    white-space: normal;
+  }
+
+  .video-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .clip-list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .step-actions .primary-button {
+    width: 100%;
+  }
 }

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { FfmpegVideoService } from './ffmpeg-video.service';
+import { SubtitleTranscriptionService } from './subtitle-transcription.service';
 
 interface Voice {
   id: string;
@@ -24,17 +25,21 @@ interface VoiceListResponse {
 export class App implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly videoRenderer = inject(FfmpegVideoService);
+  private readonly subtitleTranscriber = inject(SubtitleTranscriptionService);
   private narrationAudio: Blob | null = null;
   private narrationFileName = '';
-  protected text = 'Xin chào! Đây là công cụ tạo giọng nói tiếng Việt bằng VieNeu-TTS.';
+  protected text = 'Xin chào! Đây là công cụ Làm phim studio siêu đẹp bằng VieNeu-TTS.';
   protected readonly voices = signal<Voice[]>([]);
   protected readonly selectedVoice = signal('');
   protected readonly loadingVoices = signal(true);
   protected readonly generating = signal(false);
+  protected readonly audioInputMode = signal<'tts' | 'upload'>('tts');
+  protected readonly activeStep = signal<1 | 2 | 3>(1);
   protected readonly error = signal('');
   protected readonly audioUrl = signal('');
   protected readonly audioFileName = signal('');
   protected readonly storyImages = signal<File[]>([]);
+  protected readonly includeSubtitles = signal(false);
   protected readonly rendering = signal(false);
   protected readonly renderStatus = signal('');
   protected readonly renderError = signal('');
@@ -42,6 +47,23 @@ export class App implements OnInit, OnDestroy {
 
   protected get selectedVoiceDescription(): string {
     return this.voices().find((voice) => voice.id === this.selectedVoice())?.description ?? '';
+  }
+
+  protected toggleStep(step: 1 | 2 | 3): void {
+    if (step === 2 && !this.audioUrl()) {
+      return;
+    }
+    if (
+      step === 3 &&
+      (!this.audioUrl() || this.storyImages().length === 0)
+    ) {
+      return;
+    }
+    this.activeStep.set(step);
+  }
+
+  protected setAudioInputMode(mode: 'tts' | 'upload'): void {
+    this.audioInputMode.set(mode);
   }
 
   ngOnInit(): void {
@@ -82,6 +104,7 @@ export class App implements OnInit, OnDestroy {
       next: (audio) => {
         this.setNarrationAudio(audio, 'vieneu-speech.wav');
         this.generating.set(false);
+        this.activeStep.set(2);
       },
       error: () => {
         this.error.set('Không tạo được audio. Hãy kiểm tra VieNeu server và thử lại.');
@@ -101,6 +124,7 @@ export class App implements OnInit, OnDestroy {
     this.setNarrationAudio(file, file.name);
     this.error.set('');
     this.renderError.set('');
+    this.activeStep.set(2);
   }
 
   protected onStoryImagesSelected(event: Event): void {
@@ -111,9 +135,23 @@ export class App implements OnInit, OnDestroy {
     this.clearMovie();
   }
 
+  protected onSubtitleToggle(event: Event): void {
+    const enabled = (event.target as HTMLInputElement).checked;
+    this.includeSubtitles.set(enabled);
+    this.renderError.set('');
+    this.clearMovie();
+  }
+
+  protected continueToVideo(): void {
+    if (this.audioUrl() && this.storyImages().length > 0) {
+      this.activeStep.set(3);
+    }
+  }
+
   protected async renderMovie(): Promise<void> {
     const audio = this.narrationAudio;
     const images = this.storyImages();
+    const shouldCreateSubtitles = this.includeSubtitles();
     if (!audio || !this.narrationFileName || images.length === 0 || this.rendering()) {
       return;
     }
@@ -123,11 +161,18 @@ export class App implements OnInit, OnDestroy {
     this.renderStatus.set('');
     this.clearMovie();
     try {
+      const subtitleCues = shouldCreateSubtitles
+        ? await this.subtitleTranscriber.transcribe(
+          audio,
+          (status) => this.renderStatus.set(status)
+        )
+        : null;
       const movie = await this.videoRenderer.createStoryVideo(
         images,
         audio,
         this.narrationFileName,
-        (status) => this.renderStatus.set(status)
+        (status) => this.renderStatus.set(status),
+        subtitleCues
       );
       this.movieUrl.set(URL.createObjectURL(movie));
       this.renderStatus.set('Đã ghép xong video.');

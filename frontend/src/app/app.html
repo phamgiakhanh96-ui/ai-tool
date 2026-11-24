@@ -1,12 +1,63 @@
 <main>
-  <section class="card">
-    <p class="eyebrow">Angular + Express starter</p>
-    <h1>AI Tool</h1>
-    <p class="description">Your frontend and API are ready to build on.</p>
-    <div class="api-status" role="status">
-      <span>API status</span>
-      <strong>{{ apiStatus() }}</strong>
-    </div>
-    <router-outlet />
+  <section class="voice-tool">
+    <header>
+      <p class="eyebrow">VieNeu-TTS v3 Turbo</p>
+      <h1>Tạo giọng nói tiếng Việt</h1>
+      <p class="description">Nhập văn bản, chọn giọng có sẵn và tạo audio WAV.</p>
+    </header>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <form (ngSubmit)="generateSpeech()">
+      <label for="speech-text">Văn bản</label>
+      <textarea
+        id="speech-text"
+        name="text"
+        rows="7"
+        maxlength="20000"
+        required
+        [(ngModel)]="text"
+        placeholder="Nhập nội dung tiếng Việt..."
+      ></textarea>
+      <div class="character-count">{{ text.length }} / 20.000 ký tự</div>
+
+      <label for="voice">Giọng đọc</label>
+      <select
+        id="voice"
+        name="voice"
+        required
+        [disabled]="loadingVoices() || voices().length === 0"
+        [ngModel]="selectedVoice()"
+        (ngModelChange)="selectedVoice.set($event)"
+      >
+        @if (loadingVoices()) {
+          <option value="">Đang tải danh sách giọng...</option>
+        } @else if (voices().length === 0) {
+          <option value="">Không có giọng đọc</option>
+        } @else {
+          @for (voice of voices(); track voice.id) {
+            <option [value]="voice.id">{{ voice.name }}{{ voice.gender ? ' - ' + voice.gender : '' }}</option>
+          }
+        }
+      </select>
+
+      @if (selectedVoice()) {
+        <p class="voice-description">{{ selectedVoiceDescription }}</p>
+      }
+
+      <button type="submit" [disabled]="generating() || loadingVoices() || !text.trim() || !selectedVoice()">
+        {{ generating() ? 'Đang tạo audio...' : 'Tạo giọng nói' }}
+      </button>
+    </form>
+
+    @if (audioUrl()) {
+      <section class="result" aria-label="Audio đã tạo">
+        <h2>Audio của bạn</h2>
+        <audio [src]="audioUrl()" controls></audio>
+        <a [href]="audioUrl()" download="vieneu-speech.wav">Tải file WAV</a>
+      </section>
+    }
   </section>
 </main>

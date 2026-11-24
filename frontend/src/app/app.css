@@ -13,8 +13,8 @@ main {
   background: #f3f6fb;
 }
 
-.card {
-  width: min(100%, 560px);
+.voice-tool {
+  width: min(100%, 720px);
   padding: 40px;
   border: 1px solid #dfe6f0;
   border-radius: 16px;
@@ -23,7 +23,7 @@ main {
 }
 
 .eyebrow {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #3759c7;
   font-size: 0.8rem;
   font-weight: 700;
@@ -33,7 +33,7 @@ main {
 
 h1 {
   margin: 0;
-  font-size: 2.5rem;
+  font-size: clamp(1.7rem, 5vw, 2.4rem);
 }
 
 .description {
@@ -41,15 +41,88 @@ h1 {
   color: #596579;
 }
 
-.api-status {
+form {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 10px;
-  background: #f3f6fb;
+  gap: 12px;
 }
 
-.api-status span {
+label {
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.character-count {
+  margin-top: -6px;
+  color: #64748b;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.voice-description {
+  min-height: 1.4em;
+  margin: 0;
   color: #596579;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
+}
+
+button {
+  margin-top: 12px;
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #3759c7;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.error {
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.result {
+  display: grid;
+  gap: 14px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.result h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.result audio {
+  width: 100%;
+}
+
+.result a {
+  color: #3759c7;
+  font-weight: 700;
 }

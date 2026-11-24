@@ -1,59 +1,24 @@
-# Frontend
+# VieNeu Voice (Angular)
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.3.0.
+Angular-only frontend for VieNeu-TTS v3 Turbo preset voices. No Express backend is installed or required by this project.
 
-## Development server
+## Run
 
-To start a local development server, run:
+The [VieNeu-TTS repository](https://github.com/pnnbao97/VieNeu-TTS) and its Python environment must be set up in the sibling `VieNeu-TTS` folder. This tool's `start.bat` starts the API if it is not already running, waits for it to be ready, and then starts Angular:
 
-```bash
-ng serve
+```powershell
+.\start.bat
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+If VieNeu-TTS has not been installed yet, follow its setup guide. For a CUDA-capable NVIDIA GPU, run `uv sync --extra cuda` from the VieNeu-TTS folder; for CPU-only, use `uv sync`. The first run downloads the model.
 
-## Code scaffolding
+Open `http://localhost:4200`. The Angular development server proxies `/v1` requests to VieNeu on port 8000, avoiding browser CORS for local development.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+The VieNeu API is still required to synthesize audio; the browser frontend cannot load the model itself. The development proxy is not a production proxy.
 
-```bash
-ng generate component component-name
+## Check
+
+```powershell
+npm run build
+npm test
 ```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

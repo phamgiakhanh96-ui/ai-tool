@@ -17,16 +17,29 @@ describe('App', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should request API health and display the response', () => {
+  it('should load preset voices and submit speech to VieNeu', () => {
     const httpTesting = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    httpTesting.expectOne('/api/health').flush({ status: 'ok', service: 'api' });
+    httpTesting.expectOne('/v1/voices').flush({
+      object: 'list',
+      data: [{ id: 'Mai Anh', name: 'Mai Anh', description: 'Giọng nữ miền Bắc', gender: 'Nữ' }]
+    });
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.api-status')?.textContent).toContain('Connected to api: ok');
+    compiled.querySelector('button')!.click();
+
+    const speechRequest = httpTesting.expectOne('/v1/audio/speech');
+    expect(speechRequest.request.body).toEqual({
+      input: 'Xin chào! Đây là công cụ tạo giọng nói tiếng Việt bằng VieNeu-TTS.',
+      voice: 'Mai Anh',
+      response_format: 'wav'
+    });
+    speechRequest.flush(new Blob(), { status: 503, statusText: 'Service Unavailable' });
+    fixture.detectChanges();
+    expect(compiled.querySelector('[role="alert"]')?.textContent).toContain('Không tạo được audio');
     httpTesting.verify();
   });
 });

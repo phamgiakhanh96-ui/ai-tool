@@ -1,18 +1,20 @@
 # VieNeu Voice (Angular)
 
-Angular-only frontend for VieNeu-TTS v3 Turbo preset voices. No Express backend is installed or required by this project.
+Angular-only frontend for VieNeu-TTS v3 Turbo preset voices and browser-based video assembly with FFmpeg.wasm. No Express backend is installed or required by this project.
 
 ## Run
 
-The [VieNeu-TTS repository](https://github.com/pnnbao97/VieNeu-TTS) and its Python environment must be set up in the sibling `VieNeu-TTS` folder. This tool's `start.bat` starts the API if it is not already running, waits for it to be ready, and then starts Angular:
+The [VieNeu-TTS repository](https://github.com/pnnbao97/VieNeu-TTS) and its Python environment should be set up in the sibling `VieNeu-TTS` folder. Double-click `start.bat` or run it from PowerShell; it installs frontend packages if needed, starts the API when available, launches Angular, and opens the app in your browser:
 
 ```powershell
 .\start.bat
 ```
 
-If VieNeu-TTS has not been installed yet, follow its setup guide. For a CUDA-capable NVIDIA GPU, run `uv sync --extra cuda` from the VieNeu-TTS folder; for CPU-only, use `uv sync`. The first run downloads the model.
+If VieNeu-TTS is unavailable, the app still starts and you can upload narration audio to make a video; text-to-speech requires VieNeu-TTS. For a CUDA-capable NVIDIA GPU, run `uv sync --extra cuda` from the VieNeu-TTS folder; for CPU-only, use `uv sync`. The first run downloads the model.
 
-Open `http://localhost:4200`. The Angular development server proxies `/v1` requests to VieNeu on port 8000, avoiding browser CORS for local development.
+The Angular development server proxies `/v1` requests to VieNeu on port 8000, avoiding browser CORS for local development. Keep the launcher window open while using the app.
+
+Generate narration with VieNeu or upload an audio file, select story images in order, and choose **Tạo video kể chuyện**. FFmpeg.wasm loads its single-thread core from jsDelivr on the first render (about 30 MB). Images receive a subtle zoom effect and are timed evenly to the audio. Processing happens in the browser and can be slow or memory-intensive for large files. Output is 720p H.264/AAC.
 
 The VieNeu API is still required to synthesize audio; the browser frontend cannot load the model itself. The development proxy is not a production proxy.
 
@@ -22,3 +24,8 @@ The VieNeu API is still required to synthesize audio; the browser frontend canno
 npm run build
 npm test
 ```
+
+Chay tool
+
+Set-Location 'C:\Users\Admin\Desktop\source code\ai-tool\frontend'
+.\start.bat

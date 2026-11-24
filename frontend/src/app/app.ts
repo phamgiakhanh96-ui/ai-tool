@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { FfmpegVideoService } from './ffmpeg-video.service';
 
 interface Voice {
   id: string;
@@ -22,6 +23,9 @@ interface VoiceListResponse {
 })
 export class App implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
+  private readonly videoRenderer = inject(FfmpegVideoService);
+  private narrationAudio: Blob | null = null;
+  private narrationFileName = '';
   protected text = 'Xin chào! Đây là công cụ tạo giọng nói tiếng Việt bằng VieNeu-TTS.';
   protected readonly voices = signal<Voice[]>([]);
   protected readonly selectedVoice = signal('');
@@ -29,6 +33,12 @@ export class App implements OnInit, OnDestroy {
   protected readonly generating = signal(false);
   protected readonly error = signal('');
   protected readonly audioUrl = signal('');
+  protected readonly audioFileName = signal('');
+  protected readonly storyImages = signal<File[]>([]);
+  protected readonly rendering = signal(false);
+  protected readonly renderStatus = signal('');
+  protected readonly renderError = signal('');
+  protected readonly movieUrl = signal('');
 
   protected get selectedVoiceDescription(): string {
     return this.voices().find((voice) => voice.id === this.selectedVoice())?.description ?? '';
@@ -50,6 +60,8 @@ export class App implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearAudio();
+    this.clearMovie();
+    this.videoRenderer.terminate();
   }
 
   protected generateSpeech(): void {
@@ -61,10 +73,14 @@ export class App implements OnInit, OnDestroy {
 
     this.error.set('');
     this.generating.set(true);
+    this.narrationAudio = null;
+    this.narrationFileName = '';
+    this.audioFileName.set('');
     this.clearAudio();
+    this.clearMovie();
     this.http.post('/v1/audio/speech', { input, voice, response_format: 'wav' }, { responseType: 'blob' }).subscribe({
       next: (audio) => {
-        this.audioUrl.set(URL.createObjectURL(audio));
+        this.setNarrationAudio(audio, 'vieneu-speech.wav');
         this.generating.set(false);
       },
       error: () => {
@@ -74,11 +90,82 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  protected onNarrationSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+
+    this.setNarrationAudio(file, file.name);
+    this.error.set('');
+    this.renderError.set('');
+  }
+
+  protected onStoryImagesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.storyImages.set(Array.from(input.files ?? []));
+    input.value = '';
+    this.renderError.set('');
+    this.clearMovie();
+  }
+
+  protected async renderMovie(): Promise<void> {
+    const audio = this.narrationAudio;
+    const images = this.storyImages();
+    if (!audio || !this.narrationFileName || images.length === 0 || this.rendering()) {
+      return;
+    }
+
+    this.rendering.set(true);
+    this.renderError.set('');
+    this.renderStatus.set('');
+    this.clearMovie();
+    try {
+      const movie = await this.videoRenderer.createStoryVideo(
+        images,
+        audio,
+        this.narrationFileName,
+        (status) => this.renderStatus.set(status)
+      );
+      this.movieUrl.set(URL.createObjectURL(movie));
+      this.renderStatus.set('Đã ghép xong video.');
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : 'Không thể tạo video. Hãy kiểm tra lỗi trong Console của trình duyệt.';
+      this.renderStatus.set('');
+      this.renderError.set(message);
+    } finally {
+      this.rendering.set(false);
+    }
+  }
+
+  private setNarrationAudio(audio: Blob, fileName: string): void {
+    this.narrationAudio = audio;
+    this.narrationFileName = fileName;
+    this.audioFileName.set(fileName);
+    this.clearAudio();
+    this.clearMovie();
+    this.audioUrl.set(URL.createObjectURL(audio));
+  }
+
   private clearAudio(): void {
     const currentAudioUrl = this.audioUrl();
     if (currentAudioUrl) {
       URL.revokeObjectURL(currentAudioUrl);
       this.audioUrl.set('');
+    }
+  }
+
+  private clearMovie(): void {
+    const currentMovieUrl = this.movieUrl();
+    if (currentMovieUrl) {
+      URL.revokeObjectURL(currentMovieUrl);
+      this.movieUrl.set('');
     }
   }
 }

@@ -56,8 +56,64 @@
       <section class="result" aria-label="Audio đã tạo">
         <h2>Audio của bạn</h2>
         <audio [src]="audioUrl()" controls></audio>
-        <a [href]="audioUrl()" download="vieneu-speech.wav">Tải file WAV</a>
+        <a [href]="audioUrl()" [download]="audioFileName()">Tải audio</a>
       </section>
     }
+
+    <section class="video-editor">
+      <h2>Tạo video kể chuyện từ ảnh</h2>
+      <p class="description">Dùng audio VieNeu vừa tạo hoặc tải audio có sẵn, rồi chọn ảnh theo thứ tự câu chuyện.</p>
+      <label for="narration-audio">Audio kể chuyện (WAV, MP3, M4A, AAC, OGG hoặc FLAC)</label>
+      <input
+        id="narration-audio"
+        type="file"
+        accept=".wav,.mp3,.m4a,.aac,.ogg,.flac,audio/*"
+        [disabled]="generating()"
+        (change)="onNarrationSelected($event)"
+      />
+      @if (audioFileName()) {
+        <p class="render-status">Audio đang dùng: {{ audioFileName() }}</p>
+      }
+
+      <label for="story-images">Ảnh minh họa (JPG, PNG hoặc WebP)</label>
+      <input
+        id="story-images"
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+        multiple
+        (change)="onStoryImagesSelected($event)"
+      />
+
+      @if (storyImages().length > 0) {
+        <ul class="clip-list">
+          @for (file of storyImages(); track file.name + file.size) {
+            <li>{{ file.name }} ({{ (file.size / 1048576).toFixed(1) }} MB)</li>
+          }
+        </ul>
+      }
+
+      <p class="render-note">Ảnh được chia đều theo thời lượng audio và có hiệu ứng zoom nhẹ. Khoảng 15 ảnh phù hợp cho audio 2 phút. FFmpeg chạy trong trình duyệt nên file lớn có thể tốn nhiều bộ nhớ.</p>
+      @if (renderError()) {
+        <p class="error" role="alert">{{ renderError() }}</p>
+      }
+      @if (renderStatus()) {
+        <p class="render-status" role="status">{{ renderStatus() }}</p>
+      }
+      <button
+        type="button"
+        [disabled]="rendering() || !audioUrl() || storyImages().length === 0"
+        (click)="renderMovie()"
+      >
+        {{ rendering() ? 'Đang tạo video...' : 'Tạo video kể chuyện' }}
+      </button>
+
+      @if (movieUrl()) {
+        <section class="result" aria-label="Video đã ghép">
+          <h2>Phim hoạt hình</h2>
+          <video [src]="movieUrl()" controls></video>
+          <a [href]="movieUrl()" download="vieneu-animation.mp4">Tải file MP4</a>
+        </section>
+      }
+    </section>
   </section>
 </main>

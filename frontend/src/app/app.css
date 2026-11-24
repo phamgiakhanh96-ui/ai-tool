@@ -126,3 +126,46 @@ button:disabled {
   color: #3759c7;
   font-weight: 700;
 }
+
+.video-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.video-editor h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.video-editor input[type='file'] {
+  width: 100%;
+  padding: 12px;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.clip-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.render-note,
+.render-status {
+  margin: 0;
+  color: #596579;
+  font-size: 0.9rem;
+}
+
+.video-editor video {
+  width: 100%;
+  border-radius: 8px;
+  background: #0f172a;
+}
